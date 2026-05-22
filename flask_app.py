@@ -254,19 +254,27 @@ class OrderProcessor:
         try:
             self._log('INFO', f'Cargando catalogo SAP: {pestaña_vpc}')
             engine = 'openpyxl' if ruta_archivo.endswith('.xlsm') else None
-            df = pd.read_excel(ruta_archivo, sheet_name=pestaña_vpc, header=0, engine=engine)
+            # Optimizacion: leer solo columnas necesarias (C a H = cols 2-7)
+            df = pd.read_excel(
+                ruta_archivo, 
+                sheet_name=pestaña_vpc, 
+                header=0, 
+                engine=engine,
+                usecols='C:H',
+                dtype=str
+            )
             self._log('INFO', f'Filas en catalogo SAP: {len(df)}')
             self.catalogo_sap = {}
             for idx, row in df.iterrows():
                 try:
-                    codigo = self._limpiar_codigo(row.iloc[2] if len(row) > 2 else None)
+                    codigo = self._limpiar_codigo(row.iloc[0] if len(row) > 0 else None)
                     if not codigo: continue
                     self.catalogo_sap[codigo] = {
-                        'descripcion_cliente': self._limpiar_texto(row.iloc[3] if len(row) > 3 else ''),
-                        'descripcion_sap': self._limpiar_texto(row.iloc[4] if len(row) > 4 else ''),
-                        'material_sap': self._limpiar_texto(row.iloc[5] if len(row) > 5 else ''),
-                        'cajas': self._extraer_numero_cajas(row.iloc[6] if len(row) > 6 else 0),
-                        'precio': row.iloc[7] if len(row) > 7 else 0,
+                        'descripcion_cliente': self._limpiar_texto(row.iloc[1] if len(row) > 1 else ''),
+                        'descripcion_sap': self._limpiar_texto(row.iloc[2] if len(row) > 2 else ''),
+                        'material_sap': self._limpiar_texto(row.iloc[3] if len(row) > 3 else ''),
+                        'cajas': self._extraer_numero_cajas(row.iloc[4] if len(row) > 4 else 0),
+                        'precio': row.iloc[5] if len(row) > 5 else 0,
                     }
                 except Exception as e:
                     self._log('WARNING', f'Error fila {idx} catalogo SAP: {e}')
@@ -281,13 +289,21 @@ class OrderProcessor:
         try:
             self._log('INFO', f'Cargando catalogo otros: {pestaña_otros}')
             engine = 'openpyxl' if ruta_archivo.endswith('.xlsm') else None
-            df = pd.read_excel(ruta_archivo, sheet_name=pestaña_otros, header=0, engine=engine)
+            # Optimizacion: leer solo columnas A y C (codigo y producto)
+            df = pd.read_excel(
+                ruta_archivo, 
+                sheet_name=pestaña_otros, 
+                header=0, 
+                engine=engine,
+                usecols='A,C',
+                dtype=str
+            )
             self._log('INFO', f'Filas en catalogo otros: {len(df)}')
             self.catalogo_otros = {}
             for idx, row in df.iterrows():
                 try:
                     codigo = self._limpiar_codigo(row.iloc[0] if len(row) > 0 else None)
-                    producto = self._limpiar_texto(row.iloc[2] if len(row) > 2 else '')
+                    producto = self._limpiar_texto(row.iloc[1] if len(row) > 1 else '')
                     if codigo: self.catalogo_otros[codigo] = producto
                 except Exception as e:
                     self._log('WARNING', f'Error fila {idx} catalogo otros: {e}')
